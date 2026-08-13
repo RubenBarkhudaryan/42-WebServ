@@ -35,8 +35,10 @@ private:
 
 	int parsePort(const std::string &value) const;
 	size_t parseBodySize(const std::string &value) const;
+	int parseStatusCode(const std::string &value) const;
 
 	void parseListen(ServerConfig &server);
+	void parseErrorPage(ServerConfig &server);
 	void validateMethod(const std::string &method) const;
 
 	void parseLocationDirective(

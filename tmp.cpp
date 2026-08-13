@@ -67,6 +67,28 @@ void printServers(const std::vector<ServerConfig> &servers)
 			}
 		}
 
+		std::cout << "\nError pages:" << std::endl;
+
+		const std::map<int, std::string> &errorPages =
+			servers[i].getErrorPages();
+
+		if (errorPages.empty())
+		{
+			std::cout << "  No error pages" << std::endl;
+		}
+		else
+		{
+			std::map<int, std::string>::const_iterator it =
+				errorPages.begin();
+
+			for (; it != errorPages.end(); ++it)
+			{
+				std::cout << "  [" << it->first << "] "
+						  << it->second
+						  << std::endl;
+			}
+		}
+
 		std::cout << "\nLocations:" << std::endl;
 
 		const std::vector<Location> &locations =
@@ -99,16 +121,6 @@ void printServers(const std::vector<ServerConfig> &servers)
 
 				std::cout << "  Index: "
 						  << locations[j].getIndex()
-						  << std::endl;
-	
-				std::cout << "  Autoindex: "
-						  << (locations[j].getAutoindex()
-								  ? "on"
-								  : "off")
-						  << std::endl;
-
-				std::cout << "  Redirection: "
-						  << locations[j].getRedirection()
 						  << std::endl;
 
 				std::cout << "  Methods:" << std::endl;

@@ -2,6 +2,8 @@
 #include "Location.hpp"
 #include "ServerName.hpp"
 #include <iostream>
+#include <stdexcept>
+#include <sstream>
 #include <string>
 #include <algorithm>
 #include <vector>
@@ -31,11 +33,13 @@ public:
 	void setPort(int p);
 	void setRoot(const std::string &r);
 	void addLocation(const Location &loc);
+	void addErrorPage(int code, const std::string &path);
 	void addIndex(const std::string &index);
 
 	// Геттеры (для Роли 1 и Роли 3)
 	std::vector<ServerName> getServerNames() const;
 	int getPort() const;
+	const std::map<int, std::string> &getErrorPages() const;
 	const std::string &getHost() const;
 	const std::string &getRoot() const;
 	size_t getClientMaxBodySize() const;

@@ -6,7 +6,7 @@ ServerConfig::ServerConfig() : host("0.0.0.0"), port(8080), client_max_body_size
 ServerConfig::~ServerConfig() {}
 
 ServerConfig::ServerConfig(const ServerConfig &other)
-	: host(other.host), port(other.port), server_names(other.server_names), client_max_body_size(other.client_max_body_size),
+	: host(other.host), port(other.port), server_names(other.server_names), client_max_body_size(other.client_max_body_size), indexes(other.indexes),
 	  error_pages(other.error_pages), locations(other.locations), root(other.root) {}
 ServerConfig &ServerConfig::operator=(const ServerConfig &other)
 {
@@ -105,4 +105,22 @@ void ServerConfig::addIndex(const std::string &index)
 	if (std::find(indexes.begin(), indexes.end(), index) != indexes.end())
 		throw std::runtime_error("Error: Duplicate index: " + index);
 	indexes.push_back(index);
+}
+
+void ServerConfig::addErrorPage(int code, const std::string &path)
+{
+	if (error_pages.find(code) != error_pages.end())
+	{
+		std::stringstream ss;
+		ss << code;
+
+		std::string error_msg = "Error: Duplicate error page for code: " + ss.str();
+		throw std::runtime_error(error_msg);
+	}
+	error_pages[code] = path;
+}
+
+const std::map<int, std::string> &ServerConfig::getErrorPages() const
+{
+	return error_pages;
 }

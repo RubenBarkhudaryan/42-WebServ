@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-Location::Location() : root(""), index("index.html") {}
+Location::Location() : path(""), root(""), index(""), autoindex(false), redirection("") {}
 
 Location::~Location() {}
 

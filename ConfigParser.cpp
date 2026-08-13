@@ -186,6 +186,31 @@ int ConfigParser::parsePort(const std::string &value) const
 	return static_cast<int>(port);
 }
 
+int ConfigParser::parseStatusCode(
+	const std::string &value) const
+{
+	if (value.empty())
+		fail("error_page status code cannot be empty");
+
+	for (size_t i = 0; i < value.size(); ++i)
+	{
+		unsigned char character =
+			static_cast<unsigned char>(value[i]);
+
+		if (!std::isdigit(character))
+			fail("error_page status code must contain only digits");
+	}
+
+	int code = 0;
+	std::istringstream stream(value);
+	stream >> code;
+
+	if (code < 100 || code > 599)
+		fail("error_page status code must be between 100 and 599");
+
+	return code;
+}
+
 /*
 ** Converts body-size values such as:
 **
@@ -314,6 +339,32 @@ void ConfigParser::parseListen(ServerConfig &server)
 	}
 
 	server.setPort(parsePort(portString));
+}
+
+void ConfigParser::parseErrorPage(ServerConfig &server)
+{
+	++_pos;
+
+	std::vector<std::string> values;
+
+	while (!atEnd() && !check(";"))
+	{
+		if (check("{") || check("}"))
+			fail("expected ';' after 'error_page'");
+
+		values.push_back(_tokens[_pos]);
+		++_pos;
+	}
+
+	if (values.size() < 2)
+		fail("error_page requires at least one status code and a path");
+
+	expect(";");
+
+	std::string path = values.back();
+
+	for (size_t i = 0; i + 1 < values.size(); ++i)
+		server.addErrorPage(parseStatusCode(values[i]), path);
 }
 
 /*
@@ -495,6 +546,10 @@ void ConfigParser::parseServerDirective(
 
 		for (size_t i = 0; i < names.size(); ++i)
 			server.setServerName(names[i]);
+	}
+	else if (directive == "error_page")
+	{
+		parseErrorPage(server);
 	}
 	else if (directive == "client_max_body_size")
 	{
