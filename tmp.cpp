@@ -4,6 +4,7 @@
 #include <cctype>
 #include <limits>
 #include <sstream>
+
 void printServers(const std::vector<ServerConfig> &servers)
 {
 	for (size_t i = 0; i < servers.size(); ++i)
@@ -123,6 +124,22 @@ void printServers(const std::vector<ServerConfig> &servers)
 						  << locations[j].getIndex()
 						  << std::endl;
 
+				if (locations[j].getRedirectionCode() > 0 &&
+					!locations[j].getRedirection().empty())
+				{
+					std::cout << "  Redirect code: "
+							  << locations[j].getRedirectionCode()
+							  << std::endl;
+
+					std::cout << "  Redirect: "
+							  << locations[j].getRedirection()
+							  << std::endl;
+				}
+				else
+				{
+					std::cout << "  Redirect: none" << std::endl;
+				}
+
 				std::cout << "  Methods:" << std::endl;
 
 				const std::vector<std::string> &methods =
@@ -135,9 +152,7 @@ void printServers(const std::vector<ServerConfig> &servers)
 				}
 				else
 				{
-					for (size_t k = 0;
-						 k < methods.size();
-						 ++k)
+					for (size_t k = 0; k < methods.size(); ++k)
 					{
 						std::cout << "    [" << k << "] "
 								  << methods[k]
