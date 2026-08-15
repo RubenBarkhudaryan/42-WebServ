@@ -2,15 +2,21 @@
 
 #include <algorithm>
 
-Location::Location() : path(""), root(""), index(""), autoindex(false), redirection("") {}
-
+Location::Location()
+	: root(""),
+	  index("index.html"),
+	  autoindex(false),
+	  redirectionCode(0),
+	  redirection("")
+{
+}
 Location::~Location() {}
 
 Location::Location(const Location &other)
 	: path(other.path), methods(other.methods), root(other.root),
-	  index(other.index), autoindex(other.autoindex), redirection(other.redirection) {}
+	  index(other.index), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection) {}
 
-Location Location::operator=(const Location &other)
+Location &Location::operator=(const Location &other)
 {
 	if (this != &other)
 	{
@@ -19,6 +25,7 @@ Location Location::operator=(const Location &other)
 		root = other.root;
 		index = other.index;
 		autoindex = other.autoindex;
+		redirectionCode = other.redirectionCode;
 		redirection = other.redirection;
 	}
 	return *this;
@@ -79,4 +86,17 @@ std::string Location::getIndex() const
 std::string Location::getRedirection() const
 {
 	return redirection;
+}
+
+void Location::setRedirection(const std::string &r)
+{
+	redirection = r;
+}
+int Location::getRedirectionCode() const
+{
+	return redirectionCode;
+}
+void Location::setRedirectionCode(int code)
+{
+	redirectionCode = code;
 }
