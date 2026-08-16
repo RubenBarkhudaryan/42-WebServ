@@ -292,6 +292,60 @@ size_t ConfigParser::parseBodySize(
 	return number * multiplier;
 }
 
+static bool isValidIPv4Host(const std::string &host)
+{
+	if (host.empty())
+		return false;
+
+	std::string current;
+	std::vector<std::string> octets;
+	std::stringstream stream(host);
+
+	while (std::getline(stream, current, '.'))
+	{
+		if (current.empty())
+			return false;
+
+		octets.push_back(current);
+	}
+
+	if (octets.size() != 4)
+		return false;
+
+	for (size_t i = 0; i < octets.size(); ++i)
+	{
+		if (octets[i].empty())
+			return false;
+
+		for (size_t j = 0; j < octets[i].size(); ++j)
+		{
+			if (!std::isdigit(static_cast<unsigned char>(octets[i][j])))
+				return false;
+		}
+
+		long value = 0;
+		std::istringstream octetStream(octets[i]);
+		octetStream >> value;
+
+		if (value < 0 || value > 255)
+			return false;
+	}
+
+	return true;
+}
+
+static void validateListenHost(const std::string &host)
+{
+	if (host == "localhost")
+		return;
+
+	if (isValidIPv4Host(host))
+		return;
+
+	throw std::runtime_error(
+		"listen host must be 'localhost' or a valid IPv4 address");
+}
+
 /*
 ** Parses:
 **
@@ -325,9 +379,7 @@ void ConfigParser::parseListen(ServerConfig &server)
 		}
 
 		host = value.substr(0, colonPosition);
-
-		portString =
-			value.substr(colonPosition + 1);
+		portString = value.substr(colonPosition + 1);
 
 		if (host.empty())
 			fail("listen host cannot be empty");
@@ -335,6 +387,7 @@ void ConfigParser::parseListen(ServerConfig &server)
 		if (portString.empty())
 			fail("listen port cannot be empty");
 
+		validateListenHost(host);
 		server.setHost(host);
 	}
 
@@ -454,7 +507,32 @@ void ConfigParser::parseLocationDirective(
 			consumeValueList(directive);
 
 		for (size_t i = 0; i < indexes.size(); ++i)
-			location.setIndex(indexes[i]);
+			location.addIndex(indexes[i]);
+	}
+	else if (directive == "return")
+	{
+		ensureUnique(directives, directive);
+		++_pos;
+
+		std::vector<std::string> values =
+			consumeValueList(directive);
+
+		if (values.size() != 2)
+			fail(
+				"return directive requires "
+				"exactly two values");
+
+		std::string path = values[1];
+		int statusCode = parseStatusCode(values[0]);
+
+		if (statusCode < 300 || statusCode > 399)
+			fail("return status code must be between 300 and 399");
+
+		location.setRedirectionCode(statusCode);
+
+		std::ostringstream redirectStream;
+		redirectStream << statusCode << " " << path;
+		location.setRedirection(redirectStream.str());
 	}
 	else
 	{

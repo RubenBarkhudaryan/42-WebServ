@@ -4,17 +4,17 @@
 
 Location::Location()
 	: root(""),
-	  index("index.html"),
 	  autoindex(false),
 	  redirectionCode(0),
 	  redirection("")
 {
+	indexes.push_back("index.html");
 }
 Location::~Location() {}
 
 Location::Location(const Location &other)
 	: path(other.path), methods(other.methods), root(other.root),
-	  index(other.index), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection) {}
+	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection) {}
 
 Location &Location::operator=(const Location &other)
 {
@@ -23,7 +23,7 @@ Location &Location::operator=(const Location &other)
 		path = other.path;
 		methods = other.methods;
 		root = other.root;
-		index = other.index;
+		indexes = other.indexes;
 		autoindex = other.autoindex;
 		redirectionCode = other.redirectionCode;
 		redirection = other.redirection;
@@ -64,9 +64,11 @@ std::string Location::getRoot() const
 	return root;
 }
 
-void Location::setIndex(const std::string &i)
+void Location::addIndex(const std::string &i)
 {
-	index = i;
+	if (std::find(indexes.begin(), indexes.end(), i) != indexes.end())
+		throw std::runtime_error("Error: Duplicate index: " + i);
+	indexes.push_back(i);
 }
 
 void Location::setAutoIndex(const std::string &a)
@@ -81,8 +83,16 @@ bool Location::getAutoindex() const
 
 std::string Location::getIndex() const
 {
-	return index;
+	if (indexes.empty())
+		return "";
+	return indexes[0];
 }
+
+const std::vector<std::string> &Location::getIndexes() const
+{
+	return indexes;
+}
+
 std::string Location::getRedirection() const
 {
 	return redirection;

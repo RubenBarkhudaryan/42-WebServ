@@ -9,7 +9,7 @@ private:
 	std::string path;
 	std::vector<std::string> methods;
 	std::string root;
-	std::string index;
+	std::vector<std::string> indexes;
 	bool autoindex;
 	int redirectionCode;
 	std::string redirection;
@@ -25,7 +25,7 @@ public:
 	void setPath(const std::string &p);
 	void addMethod(const std::string &m);
 	void setRoot(const std::string &r);
-	void setIndex(const std::string &i);
+	void addIndex(const std::string &i);
 	void setRedirection(const std::string &r);
 	void setRedirectionCode(int code);
 	void setAutoIndex(const std::string &a);
@@ -35,6 +35,7 @@ public:
 	const std::vector<std::string> &getMethods() const;
 	std::string getRoot() const;
 	std::string getIndex() const;
+	const std::vector<std::string> &getIndexes() const;
 	bool getAutoindex() const;
 	std::string getRedirection() const;
 	int getRedirectionCode() const;

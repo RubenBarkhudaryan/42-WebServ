@@ -6,16 +6,26 @@ ServerConfig::ServerConfig() : host("0.0.0.0"), port(8080), client_max_body_size
 ServerConfig::~ServerConfig() {}
 
 ServerConfig::ServerConfig(const ServerConfig &other)
-	: host(other.host), port(other.port), server_names(other.server_names), client_max_body_size(other.client_max_body_size), indexes(other.indexes),
-	  error_pages(other.error_pages), locations(other.locations), root(other.root) {}
+	: host(other.host),
+	  port(other.port),
+	  server_names(other.server_names),
+	  client_max_body_size(other.client_max_body_size),
+	  indexes(other.indexes),
+	  error_pages(other.error_pages),
+	  locations(other.locations),
+	  root(other.root)
+{
+}
+
 ServerConfig &ServerConfig::operator=(const ServerConfig &other)
 {
 	if (this != &other)
 	{
-		server_names = other.server_names;
-		port = other.port;
 		host = other.host;
+		port = other.port;
+		server_names = other.server_names;
 		client_max_body_size = other.client_max_body_size;
+		indexes = other.indexes;
 		error_pages = other.error_pages;
 		locations = other.locations;
 		root = other.root;
@@ -65,11 +75,17 @@ static ServerNameType determineServerNameType(const std::string &name)
 	else
 		return EXACT;
 }
-void ServerConfig::setServerName(const std::string &h)
+void ServerConfig::setServerName(const std::string &name)
 {
+	for (size_t i = 0; i < server_names.size(); ++i)
+	{
+		if (server_names[i].name == name)
+			throw std::runtime_error("Error: Duplicate server_name: " + name);
+	}
+
 	ServerName server_name;
-	server_name.name = h;
-	server_name.type = determineServerNameType(h);
+	server_name.name = name;
+	server_name.type = determineServerNameType(name);
 	server_names.push_back(server_name);
 }
 std::vector<ServerName> ServerConfig::getServerNames() const

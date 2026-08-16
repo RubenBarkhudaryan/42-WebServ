@@ -27,7 +27,19 @@ std::vector<std::string> tokenizeConfig(std::istream &input)
 
 	while (std::getline(input, line))
 	{
-		size_t commentPosition = line.find('#');
+		size_t commentPosition = std::string::npos;
+
+		for (size_t i = 0; i < line.size(); ++i)
+		{
+			if (line[i] == '#')
+			{
+				if (i == 0 || std::isspace(static_cast<unsigned char>(line[i - 1])))
+				{
+					commentPosition = i;
+					break;
+				}
+			}
+		}
 
 		if (commentPosition != std::string::npos)
 			line.erase(commentPosition);
