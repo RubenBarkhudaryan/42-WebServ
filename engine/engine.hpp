@@ -31,6 +31,18 @@ class	Engine
 		void	handleClientRead(int fd);
 		void	handleClientWrite(int fd);
 		void	removeClient(int fd);
+		void	updatePollEvents(int fd, short events);
+};
+
+struct	MatchFd
+{
+	int	_fd;
+
+	MatchFd(int fd) : _fd(fd) {}
+	bool	operator()(const struct pollfd& pfd) const
+	{
+		return (pfd.fd == _fd);
+	}
 };
 
 #endif //ENGINE_HPP

@@ -47,4 +47,5 @@ void	Server::setup()
 		throw std::runtime_error("Failed to listen on server socket.");
 
 	fcntl(this->sock_fd, F_SETFL, O_NONBLOCK);
+	fcntl(this->sock_fd, F_SETFD, FD_CLOEXEC);
 }
