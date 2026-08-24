@@ -120,9 +120,49 @@ void printServers(const std::vector<ServerConfig> &servers)
 						  << locations[j].getRoot()
 						  << std::endl;
 
-				std::cout << "  Index: "
-						  << locations[j].getIndex()
-						  << std::endl;
+				if (!locations[j].getCgiExtension().empty())
+				{
+					std::cout << "  CGI extension: "
+							  << locations[j].getCgiExtension()
+							  << std::endl;
+				}
+				else
+				{
+					std::cout << "  CGI extension: none"
+							  << std::endl;
+				}
+
+				if (!locations[j].getCgiPath().empty())
+				{
+					std::cout << "  CGI path: "
+							  << locations[j].getCgiPath()
+							  << std::endl;
+				}
+				else
+				{
+					std::cout << "  CGI path: none"
+							  << std::endl;
+				}
+
+				std::cout << "  Indexes:" << std::endl;
+
+				const std::vector<std::string> &locationIndexes =
+					locations[j].getIndexes();
+
+				if (locationIndexes.empty())
+				{
+					std::cout << "    No indexes"
+							  << std::endl;
+				}
+				else
+				{
+					for (size_t k = 0; k < locationIndexes.size(); ++k)
+					{
+						std::cout << "    [" << k << "] "
+								  << locationIndexes[k]
+								  << std::endl;
+					}
+				}
 
 				if (locations[j].getRedirectionCode() > 0 &&
 					!locations[j].getRedirection().empty())
@@ -152,10 +192,10 @@ void printServers(const std::vector<ServerConfig> &servers)
 				}
 				else
 				{
-					for (size_t k = 0; k < methods.size(); ++k)
+					for (size_t m = 0; m < methods.size(); ++m)
 					{
-						std::cout << "    [" << k << "] "
-								  << methods[k]
+						std::cout << "    [" << m << "] "
+								  << methods[m]
 								  << std::endl;
 					}
 				}

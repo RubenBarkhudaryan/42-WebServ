@@ -6,7 +6,9 @@ Location::Location()
 	: root(""),
 	  autoindex(false),
 	  redirectionCode(0),
-	  redirection("")
+	  redirection(""),
+	  cgiExtension(""),
+	  cgiPath("")
 {
 	indexes.push_back("index.html");
 }
@@ -14,7 +16,7 @@ Location::~Location() {}
 
 Location::Location(const Location &other)
 	: path(other.path), methods(other.methods), root(other.root),
-	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection) {}
+	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection), cgiExtension(other.cgiExtension), cgiPath(other.cgiPath) {}
 
 Location &Location::operator=(const Location &other)
 {
@@ -27,6 +29,8 @@ Location &Location::operator=(const Location &other)
 		autoindex = other.autoindex;
 		redirectionCode = other.redirectionCode;
 		redirection = other.redirection;
+		cgiExtension = other.cgiExtension;
+		cgiPath = other.cgiPath;
 	}
 	return *this;
 }
@@ -66,6 +70,9 @@ std::string Location::getRoot() const
 
 void Location::addIndex(const std::string &i)
 {
+	if (indexes.size() == 1 && indexes[0] == "index.html")
+		indexes.clear();
+
 	if (std::find(indexes.begin(), indexes.end(), i) != indexes.end())
 		throw std::runtime_error("Error: Duplicate index: " + i);
 	indexes.push_back(i);
@@ -109,4 +116,24 @@ int Location::getRedirectionCode() const
 void Location::setRedirectionCode(int code)
 {
 	redirectionCode = code;
+}
+
+void Location::setCgiExtension(const std::string &extension)
+{
+	cgiExtension = extension;
+}
+
+void Location::setCgiPath(const std::string &path)
+{
+	cgiPath = path;
+}
+
+const std::string &Location::getCgiExtension() const
+{
+	return cgiExtension;
+}
+
+const std::string &Location::getCgiPath() const
+{
+	return cgiPath;
 }

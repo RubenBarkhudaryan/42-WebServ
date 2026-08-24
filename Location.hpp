@@ -13,6 +13,8 @@ private:
 	bool autoindex;
 	int redirectionCode;
 	std::string redirection;
+	std::string cgiExtension;
+	std::string cgiPath;
 
 public:
 	// Конструкторы и деструкторы
@@ -29,6 +31,8 @@ public:
 	void setRedirection(const std::string &r);
 	void setRedirectionCode(int code);
 	void setAutoIndex(const std::string &a);
+	void setCgiExtension(const std::string &extension);
+	void setCgiPath(const std::string &path);
 
 	// Геттеры (использует РОЛЬ 3, когда генерирует ответ)
 	std::string getPath() const;
@@ -39,4 +43,6 @@ public:
 	bool getAutoindex() const;
 	std::string getRedirection() const;
 	int getRedirectionCode() const;
+	const std::string &getCgiExtension() const;
+	const std::string &getCgiPath() const;
 };
