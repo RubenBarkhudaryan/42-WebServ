@@ -3,6 +3,7 @@
 # define SERVER_HPP
 
 # include "../client/client.hpp"
+# include "../../parser/include/ServerConfig.hpp"
 
 # include <netinet/in.h>
 # include <map>
@@ -21,7 +22,7 @@ class	Server
 		Server& operator=(const Server& other);
 
 	public:
-		Server(int port, const std::string& ipAddr);
+		Server(const ServerConfig& config);
 		~Server();
 
 		int				getFd() const;

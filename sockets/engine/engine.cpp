@@ -18,7 +18,7 @@ Engine::Engine()
 
 Engine::~Engine()
 {
-	for (std::map<int, Server *>::iterator it; it != this->servers.end(); ++it)
+	for (std::map<int, Server *>::iterator it = this->servers.begin(); it != this->servers.end(); ++it)
 		delete it->second;
 }
 

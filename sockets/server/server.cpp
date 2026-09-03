@@ -9,8 +9,11 @@
 #include <string>
 #include <vector>
 
-Server::Server(int port, const std::string& ipAddr) : port(port), ipAddr(ipAddr)
-{}
+Server::Server(const ServerConfig& config) :
+		port(config.getPort()),
+		ipAddr(config.getHost())
+{
+}
 
 Server::~Server()
 {
