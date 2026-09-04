@@ -2,6 +2,8 @@
 
 # define CLIENT_HPP
 
+# include "../../parser/include/http/HttpRequest.hpp"
+
 # include <netinet/in.h>
 # include <string>
 # include <sys/types.h>
@@ -9,16 +11,21 @@
 class	Client
 {
 	private:
-		int					fd;
-		struct sockaddr_in	addr;
+		int							fd;
+		struct sockaddr_in			addr;
 
-		std::string			read_buff;
-		std::string			write_buff;
+		std::string					read_buff;
+		std::string					write_buff;
 
-		ssize_t				content_len;
-		bool				headers_parsed;
+		bool						headers_parsed;
+		bool						write_stat;
+		bool						bad_request;
 
-		bool				write_stat;
+		HttpRequest					request;
+		HttpRequest::BodyFraming	framing;
+
+		ssize_t						content_length;
+		std::string::size_type		body_start;
 
 		Client(const Client& other);
 		Client& operator=(const Client& other);
@@ -30,17 +37,18 @@ class	Client
 		int					getFd() const;
 		int					getPort() const;
 		struct sockaddr_in	getAddr() const;
+		const HttpRequest&	getRequest() const;
 
 		const std::string&	getReadBuff() const;
 		const std::string&	getWriteBuff() const;
-
-		//void				setWriteStatus(bool status);
 
 		void				appendReadBuffer(const char *data, ssize_t len);
 		void				appendWriteBuffer(const std::string& data);
 
 		void				consumeWriteBuffer(std::size_t size);
+		void				consumeReadBuffer(std::size_t size);
 
+		bool				hasBadRequest() const;
 		bool				isRequestComplete();
 };
 

@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 			std::cerr << "[WebServ]: too few arguments for running." << std::endl;
 
 		std::cerr << "[WebServ]: Usage: ./webserv <config_file>" << std::endl;
-		return (EXIT_FAILURE);
+		return (1);
 	}
 	try
 	{

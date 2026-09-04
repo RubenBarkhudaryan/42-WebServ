@@ -8,9 +8,13 @@
 Client::Client(int fd, struct sockaddr_in addr) :
 	fd(fd),
 	addr(addr),
-	content_len(0),
 	headers_parsed(false),
-	write_stat(false)
+	write_stat(false),
+	bad_request(false),
+	request(),
+	framing(HttpRequest::FRAMING_NONE),
+	content_length(0),
+	body_start(0)
 {
 }
 
@@ -32,6 +36,11 @@ int	Client::getPort() const
 struct sockaddr_in	Client::getAddr() const
 {
 	return (this->addr);
+}
+
+const HttpRequest&	Client::getRequest() const
+{
+	return (this->request);
 }
 
 const std::string&	Client::getReadBuff() const
@@ -64,33 +73,75 @@ void	Client::consumeWriteBuffer(std::size_t size)
 	this->write_stat = !this->write_buff.empty();
 }
 
+void	Client::consumeReadBuffer(std::size_t size)
+{
+	this->read_buff.erase(0, size);
+}
+
+bool	Client::hasBadRequest() const
+{
+	return (this->bad_request);
+}
 
 bool	Client::isRequestComplete()
 {
-	size_t header_end_pos = this->read_buff.find("\r\n\r\n");
+	if (this->bad_request)
+		return (false);
 
-	if (!this->headers_parsed && header_end_pos != std::string::npos)
+	if (!this->headers_parsed)
 	{
+		if (!this->request.parseHeaders(this->read_buff, this->body_start))
+			return (false);
+
 		this->headers_parsed = true;
+		this->framing = this->request.getBodyFraming();
 
-		size_t cl_pos = this->read_buff.find("Content-Length: ");
-		
-		if (cl_pos != std::string::npos && cl_pos < header_end_pos)
+		if (this->framing == HttpRequest::FRAMING_INVALID)
 		{
-			cl_pos += 16;
-			this->content_len = std::atoi(this->read_buff.c_str() + cl_pos);
+			this->bad_request = true;
+			return (false);
 		}
-		else
-			this->content_len = 0;
+
+		if (this->framing == HttpRequest::FRAMING_CONTENT_LENGTH)
+			this->content_length = this->request.getContentLength();
 	}
 
-	if (this->headers_parsed)
+	bool	complete = false;
+
+	if (this->framing == HttpRequest::FRAMING_NONE)
+		complete = true;
+	else if (this->framing == HttpRequest::FRAMING_CONTENT_LENGTH)
+		complete = (this->read_buff.size() >=
+			this->body_start + static_cast<std::size_t>(this->content_length));
+	else if (this->framing == HttpRequest::FRAMING_CHUNKED)
 	{
-		size_t expected_total_size = header_end_pos + 4 + this->content_len;
+		HttpRequest::ChunkedState state =
+			HttpRequest::getChunkedState(this->read_buff, this->body_start);
 
-		if (this->read_buff.size() >= expected_total_size)
-			return (true);
+		if (state == HttpRequest::CHUNKED_MALFORMED)
+		{
+			this->bad_request = true;
+			return (false);
+		}
+		complete = (state == HttpRequest::CHUNKED_COMPLETE);
 	}
 
-	return (false);
+	if (!complete)
+		return (false);
+
+	if (this->framing == HttpRequest::FRAMING_CHUNKED)
+	{
+		std::string	decoded;
+
+		if (!HttpRequest::decodeChunkedBody(this->read_buff.substr(this->body_start), decoded))
+		{
+			this->bad_request = true;
+			return (false);
+		}
+		this->request.setBody(decoded);
+	}
+	else
+		this->request.setBody(this->read_buff.substr(this->body_start));
+
+	return (true);
 }
