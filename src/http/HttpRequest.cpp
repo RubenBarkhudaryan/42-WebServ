@@ -1,6 +1,7 @@
 #include "../../include/http/HttpRequest.hpp"
 
 #include <cctype>
+#include <algorithm>
 
 namespace
 {
@@ -72,6 +73,7 @@ const std::string &HttpRequest::getHeader(const std::string &name) const
 	static const std::string emptyString = "";
 	return emptyString;
 }
+
 bool HttpRequest::parseHeaders(
 	const std::string &rawRequest,
 	std::string::size_type &bodyStart)
@@ -133,17 +135,28 @@ bool HttpRequest::parseHeaders(
 
 	return true;
 }
+
 BodyFraming HttpRequest::getBodyFraming() const
 {
-	if (hasHeader("Content-Length"))
-		return FRAMING_CONTENT_LENGTH;
-	else if (hasHeader("Transfer-Encoding") && getHeader("Transfer-Encoding") == "chunked")
-		return FRAMING_CHUNKED;
-	else if (_body.empty())
-		return FRAMING_NONE;
-	else
+	if (hasHeader("Transfer-Encoding"))
+	{
+		if (getHeader("Transfer-Encoding") == "chunked")
+			return FRAMING_CHUNKED;
+
 		return FRAMING_INVALID;
+	}
+
+	if (hasHeader("Content-Length"))
+	{
+		if (getContentLength() < 0)
+			return FRAMING_INVALID;
+
+		return FRAMING_CONTENT_LENGTH;
+	}
+
+	return FRAMING_NONE;
 }
+
 bool HttpRequest::parseBody(const std::string &rawRequest, std::string::size_type bodyStart)
 {
 	if (bodyStart >= rawRequest.size())
@@ -154,6 +167,31 @@ bool HttpRequest::parseBody(const std::string &rawRequest, std::string::size_typ
 
 	_body = rawRequest.substr(bodyStart);
 	return true;
+}
+ssize_t HttpRequest::getContentLength() const
+{
+	if (!hasHeader("Content-Length"))
+		return -1;
+
+	const std::string &value = getHeader("Content-Length");
+
+	if (value.empty())
+		return -1;
+
+	std::istringstream lengthStream(value);
+	long long length;
+	char extra;
+
+	if (!(lengthStream >> length))
+		return -1;
+
+	if (length < 0)
+		return -1;
+
+	if (lengthStream >> extra)
+		return -1;
+
+	return static_cast<ssize_t>(length);
 }
 
 void HttpRequest::parse(const std::string &rawRequest)

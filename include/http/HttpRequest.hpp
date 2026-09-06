@@ -38,6 +38,7 @@ public:
 	bool hasHeader(const std::string &name) const;
 	bool parseHeaders(const std::string &rawRequest, std::string::size_type &bodyStart);
 	bool parseBody(const std::string &rawRequest, std::string::size_type bodyStart);
+	ssize_t getContentLength() const;
 	BodyFraming getBodyFraming() const;
 	const std::string &getHeader(const std::string &name) const;
 };
