@@ -1,5 +1,5 @@
-#include "../../include/Location.hpp"
-#include "../../include/ServerConfig.hpp"
+#include "Location.hpp"
+#include "ServerConfig.hpp"
 
 ServerConfig::ServerConfig() : host("0.0.0.0"), port(8080), client_max_body_size(1024 * 1024) {}
 

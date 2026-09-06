@@ -3,8 +3,8 @@
 #ifndef CONFIGPARSER_HPP
 #define CONFIGPARSER_HPP
 
-#include "./Location.hpp"
-#include "./ServerConfig.hpp"
+#include "Location.hpp"
+#include "ServerConfig.hpp"
 
 #include <set>
 #include <string>

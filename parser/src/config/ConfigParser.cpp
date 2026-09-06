@@ -1,4 +1,4 @@
-#include "../../include/ConfigParser.hpp"
+#include "ConfigParser.hpp"
 
 #include <cctype>
 #include <limits>

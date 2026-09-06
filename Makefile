@@ -2,6 +2,7 @@ NAME		=	webserv
 
 CXX			=	c++
 CXXFLAGS	=	-std=c++98 -Wall -Wextra -Werror
+INCLUDES	=	-Iparser/include
 
 SRCS		=	./sockets/engine/engine.cpp\
 				./sockets/server/server.cpp\
@@ -11,6 +12,7 @@ SRCS		=	./sockets/engine/engine.cpp\
 				./parser/src/config/ServerConfig.cpp\
 				./parser/src/debug/ServerPrinter.cpp\
 				./parser/src/http/HttpRequest.cpp\
+				./parser/src/http/HttpResponse.cpp\
 				./parser/src/model/Location.cpp\
 				./main.cpp
 
@@ -22,7 +24,7 @@ $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
 %.o : %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJS)

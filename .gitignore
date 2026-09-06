@@ -1,2 +1,28 @@
+# Compiled object files and executables
+obj/
 *.o
+*.obj
+*.exe
 webserv
+*.d
+
+# Build directories
+build/
+dist/
+
+# Logs and temporary files
+*.log
+*~
+*.swp
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Misc
+**/coverage/
+

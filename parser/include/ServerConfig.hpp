@@ -1,6 +1,6 @@
 #pragma once
-#include "./Location.hpp"
-#include "./ServerName.hpp"
+#include "Location.hpp"
+#include "ServerName.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <sstream>

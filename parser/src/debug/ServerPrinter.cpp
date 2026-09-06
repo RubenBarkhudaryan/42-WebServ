@@ -1,6 +1,5 @@
-#include "../../include/Location.hpp"
-#include "../../include/ServerConfig.hpp"
-
+#include "Location.hpp"
+#include "ServerConfig.hpp"
 #include <fstream>
 #include <cctype>
 #include <limits>
