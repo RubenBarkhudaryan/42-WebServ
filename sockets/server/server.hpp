@@ -12,6 +12,7 @@
 class	Server
 {
 	private:
+		ServerConfig			config;
 		int						fd;
 		int						port;
 		std::string				ipAddr;
@@ -25,11 +26,12 @@ class	Server
 		Server(const ServerConfig& config);
 		~Server();
 
-		int				getFd() const;
-		int				getPort() const;
-		std::string		getIP() const;
-		Client			*getClient(int fd);
-		const Client	*getClient(int fd) const;
+		int						getFd() const;
+		int						getPort() const;
+		std::string				getIP() const;
+		const ServerConfig&		getConfig() const;
+		Client					*getClient(int fd);
+		const Client			*getClient(int fd) const;
 
 		void			setup();
 

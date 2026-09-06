@@ -12,7 +12,7 @@ Client::Client(int fd, struct sockaddr_in addr) :
 	write_stat(false),
 	bad_request(false),
 	request(),
-	framing(HttpRequest::FRAMING_NONE),
+	framing(FRAMING_NONE),
 	content_length(0),
 	body_start(0)
 {
@@ -96,40 +96,40 @@ bool	Client::isRequestComplete()
 		this->headers_parsed = true;
 		this->framing = this->request.getBodyFraming();
 
-		if (this->framing == HttpRequest::FRAMING_INVALID)
+		if (this->framing == FRAMING_INVALID)
 		{
 			this->bad_request = true;
 			return (false);
 		}
 
-		if (this->framing == HttpRequest::FRAMING_CONTENT_LENGTH)
+		if (this->framing == FRAMING_CONTENT_LENGTH)
 			this->content_length = this->request.getContentLength();
 	}
 
 	bool	complete = false;
 
-	if (this->framing == HttpRequest::FRAMING_NONE)
+	if (this->framing == FRAMING_NONE)
 		complete = true;
-	else if (this->framing == HttpRequest::FRAMING_CONTENT_LENGTH)
+	else if (this->framing == FRAMING_CONTENT_LENGTH)
 		complete = (this->read_buff.size() >=
 			this->body_start + static_cast<std::size_t>(this->content_length));
-	else if (this->framing == HttpRequest::FRAMING_CHUNKED)
+	else if (this->framing == FRAMING_CHUNKED)
 	{
-		HttpRequest::ChunkedState state =
+		ChunkedState state =
 			HttpRequest::getChunkedState(this->read_buff, this->body_start);
 
-		if (state == HttpRequest::CHUNKED_MALFORMED)
+		if (state == CHUNKED_MALFORMED)
 		{
 			this->bad_request = true;
 			return (false);
 		}
-		complete = (state == HttpRequest::CHUNKED_COMPLETE);
+		complete = (state == CHUNKED_COMPLETE);
 	}
 
 	if (!complete)
 		return (false);
 
-	if (this->framing == HttpRequest::FRAMING_CHUNKED)
+	if (this->framing == FRAMING_CHUNKED)
 	{
 		std::string	decoded;
 

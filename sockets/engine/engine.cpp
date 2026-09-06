@@ -1,5 +1,7 @@
 #include "./engine.hpp"
 
+#include "../../parser/include/http/RequestHandler.hpp"
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -46,7 +48,7 @@ void	Engine::run()
 			if (i < this->pollfds.size() && (this->pollfds[i].revents & POLLOUT))
 				handleClientWrite(this->pollfds[i].fd);
 
-			if (this->pollfds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+			if (i < this->pollfds.size() && (this->pollfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)))
 				handleClientRemove(this->pollfds[i].fd);
 		}
 	}
@@ -135,13 +137,10 @@ void	Engine::handleClientRead(int client_fd)
 
 	if (client->isRequestComplete())
 	{
-		std::string dummy_response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: text/plain\r\n"
-			"Content-Length: 21\r\n"
-			"Connection: close\r\n\r\n"
-			"Hello from webserv!!!";
-		client->appendWriteBuffer(dummy_response);
+		HttpResponse	response = RequestHandler::handle(client->getRequest(), server->getConfig());
+
+		response.setHeader("Connection", "close");
+		client->appendWriteBuffer(response.serialize());
 		updatePollEvents(client_fd, POLLIN | POLLOUT);
 	}
 }

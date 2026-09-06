@@ -22,7 +22,7 @@ class	Client
 		bool						bad_request;
 
 		HttpRequest					request;
-		HttpRequest::BodyFraming	framing;
+		BodyFraming					framing;
 
 		ssize_t						content_length;
 		std::string::size_type		body_start;

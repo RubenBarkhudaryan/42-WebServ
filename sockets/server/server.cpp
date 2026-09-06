@@ -10,6 +10,7 @@
 #include <vector>
 
 Server::Server(const ServerConfig& config) :
+		config(config),
 		port(config.getPort()),
 		ipAddr(config.getHost())
 {
@@ -55,6 +56,11 @@ int	Server::getPort() const
 std::string	Server::getIP() const
 {
 	return (this->ipAddr);
+}
+
+const ServerConfig&	Server::getConfig() const
+{
+	return (this->config);
 }
 
 Client	*Server::getClient(int fd)
