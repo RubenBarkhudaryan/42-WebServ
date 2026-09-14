@@ -20,6 +20,7 @@ class	Client
 		bool						headers_parsed;
 		bool						write_stat;
 		bool						bad_request;
+		bool						body_too_large;
 
 		HttpRequest					request;
 		BodyFraming					framing;
@@ -49,7 +50,8 @@ class	Client
 		void				consumeReadBuffer(std::size_t size);
 
 		bool				hasBadRequest() const;
-		bool				isRequestComplete();
+		bool				hasBodyTooLarge() const;
+		bool				isRequestComplete(std::size_t maxBodySize = static_cast<std::size_t>(-1));
 };
 
 #endif //CLIENT_HPP

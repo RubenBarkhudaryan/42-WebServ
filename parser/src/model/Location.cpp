@@ -8,7 +8,8 @@ Location::Location()
 	  redirectionCode(0),
 	  redirection(""),
 	  cgiExtension(""),
-	  cgiPath("")
+	  cgiPath(""),
+	  uploadStore("")
 {
 	indexes.push_back("index.html");
 }
@@ -16,7 +17,7 @@ Location::~Location() {}
 
 Location::Location(const Location &other)
 	: path(other.path), methods(other.methods), root(other.root),
-	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection), cgiExtension(other.cgiExtension), cgiPath(other.cgiPath) {}
+	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection), cgiExtension(other.cgiExtension), cgiPath(other.cgiPath), uploadStore(other.uploadStore) {}
 
 Location &Location::operator=(const Location &other)
 {
@@ -31,6 +32,7 @@ Location &Location::operator=(const Location &other)
 		redirection = other.redirection;
 		cgiExtension = other.cgiExtension;
 		cgiPath = other.cgiPath;
+		uploadStore = other.uploadStore;
 	}
 	return *this;
 }
@@ -128,6 +130,11 @@ void Location::setCgiPath(const std::string &path)
 	cgiPath = path;
 }
 
+void Location::setUploadStore(const std::string &path)
+{
+	uploadStore = path;
+}
+
 const std::string &Location::getCgiExtension() const
 {
 	return cgiExtension;
@@ -136,4 +143,9 @@ const std::string &Location::getCgiExtension() const
 const std::string &Location::getCgiPath() const
 {
 	return cgiPath;
+}
+
+const std::string &Location::getUploadStore() const
+{
+	return uploadStore;
 }

@@ -5,12 +5,18 @@
 
 #include <cstdlib>
 
+namespace
+{
+	const std::string::size_type	MAX_HEADER_SIZE = 8192;
+}
+
 Client::Client(int fd, struct sockaddr_in addr) :
 	fd(fd),
 	addr(addr),
 	headers_parsed(false),
 	write_stat(false),
 	bad_request(false),
+	body_too_large(false),
 	request(),
 	framing(FRAMING_NONE),
 	content_length(0),
@@ -83,15 +89,24 @@ bool	Client::hasBadRequest() const
 	return (this->bad_request);
 }
 
-bool	Client::isRequestComplete()
+bool	Client::hasBodyTooLarge() const
 {
-	if (this->bad_request)
+	return (this->body_too_large);
+}
+
+bool	Client::isRequestComplete(std::size_t maxBodySize)
+{
+	if (this->bad_request || this->body_too_large)
 		return (false);
 
 	if (!this->headers_parsed)
 	{
 		if (!this->request.parseHeaders(this->read_buff, this->body_start))
+		{
+			if (this->read_buff.size() > MAX_HEADER_SIZE)
+				this->bad_request = true;
 			return (false);
+		}
 
 		this->headers_parsed = true;
 		this->framing = this->request.getBodyFraming();
@@ -103,7 +118,23 @@ bool	Client::isRequestComplete()
 		}
 
 		if (this->framing == FRAMING_CONTENT_LENGTH)
+		{
 			this->content_length = this->request.getContentLength();
+
+			if (this->content_length >= 0 &&
+				static_cast<std::size_t>(this->content_length) > maxBodySize)
+			{
+				this->body_too_large = true;
+				return (false);
+			}
+		}
+	}
+
+	if (this->framing == FRAMING_CHUNKED &&
+		this->read_buff.size() - this->body_start > maxBodySize)
+	{
+		this->body_too_large = true;
+		return (false);
 	}
 
 	bool	complete = false;

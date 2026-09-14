@@ -4,16 +4,27 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <iostream>
 #include <stdexcept>
+#include <cstddef>
 
 #include <fcntl.h>
 
 #include <algorithm>
 
 #include <map>
+#include <set>
 #include <vector>
+
+namespace
+{
+	bool isPollFdRemoved(const struct pollfd &entry)
+	{
+		return entry.fd == -1;
+	}
+}
 
 Engine::Engine()
 {}
@@ -22,35 +33,70 @@ Engine::~Engine()
 {
 	for (std::map<int, Server *>::iterator it = this->servers.begin(); it != this->servers.end(); ++it)
 		delete it->second;
+
+	std::set<CgiProcess *>	uniqueCgiSessions;
+
+	for (std::map<int, CgiProcess *>::iterator it = this->cgi_fds.begin(); it != this->cgi_fds.end(); ++it)
+		uniqueCgiSessions.insert(it->second);
+	for (std::size_t i = 0; i < this->cgi_pending_reap.size(); ++i)
+		uniqueCgiSessions.insert(this->cgi_pending_reap[i]);
+
+	for (std::set<CgiProcess *>::iterator it = uniqueCgiSessions.begin(); it != uniqueCgiSessions.end(); ++it)
+		delete *it;
 }
 
 void	Engine::run()
 {
 	while (true)
 	{
-		int	ready = poll(this->pollfds.data(), this->pollfds.size(), -1);
+		int	timeout = this->cgi_pending_reap.empty() ? -1 : 25;
+		int	ready = poll(this->pollfds.data(), this->pollfds.size(), timeout);
 
 		if (ready == -1)
 			throw std::runtime_error("[Engine]: poll failed");
 
 		for (std::size_t i = 0; i < this->pollfds.size(); ++i)
 		{
-			if (this->pollfds[i].revents & POLLIN)
-			{
-				int	current_fd = this->pollfds[i].fd;
+			int		fd = this->pollfds[i].fd;
+			short	revents = this->pollfds[i].revents;
 
-				if (this->servers.find(current_fd) != this->servers.end())
-					handleNewConnection(current_fd);
-				else
-					handleClientRead(current_fd);
+			if (fd == -1 || revents == 0)
+				continue;
+
+			std::map<int, CgiProcess *>::iterator cgiIt = this->cgi_fds.find(fd);
+
+			if (cgiIt != this->cgi_fds.end())
+			{
+				CgiProcess	*cgi = cgiIt->second;
+				bool		isStdin = (fd == cgi->getStdinFd());
+
+				if (isStdin && (revents & (POLLOUT | POLLHUP | POLLERR)))
+					handleCgiWritable(fd);
+				else if (!isStdin && (revents & (POLLIN | POLLHUP | POLLERR)))
+					handleCgiReadable(fd);
+				continue;
 			}
 
-			if (i < this->pollfds.size() && (this->pollfds[i].revents & POLLOUT))
-				handleClientWrite(this->pollfds[i].fd);
+			if (revents & POLLIN)
+			{
+				if (this->servers.find(fd) != this->servers.end())
+					handleNewConnection(fd);
+				else
+					handleClientRead(fd);
+			}
 
-			if (i < this->pollfds.size() && (this->pollfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)))
-				handleClientRemove(this->pollfds[i].fd);
+			if (this->pollfds[i].fd != -1 && (revents & POLLOUT))
+				handleClientWrite(fd);
+
+			if (this->pollfds[i].fd != -1 && (revents & (POLLERR | POLLHUP | POLLNVAL)))
+				handleClientRemove(fd);
 		}
+
+		this->pollfds.erase(
+			std::remove_if(this->pollfds.begin(), this->pollfds.end(), isPollFdRemoved),
+			this->pollfds.end());
+
+		reapCgiSessions();
 	}
 }
 
@@ -59,7 +105,15 @@ void	Engine::addServer(Server *new_server)
 	if (!new_server)
 		return ;
 
-	new_server->setup();
+	try
+	{
+		new_server->setup();
+	}
+	catch (...)
+	{
+		delete new_server;
+		throw;
+	}
 
 	struct pollfd	server_pollfd;
 
@@ -135,12 +189,43 @@ void	Engine::handleClientRead(int client_fd)
 
 	client->appendReadBuffer(buffer, bytes_read);
 
-	if (client->isRequestComplete())
+	bool request_complete = client->isRequestComplete(server->getConfig().getClientMaxBodySize());
+	if (client->hasBodyTooLarge())
 	{
-		HttpResponse	response = RequestHandler::handle(client->getRequest(), server->getConfig());
+		HttpResponse response = RequestHandler::makeErrorResponse(413, server->getConfig());
 
 		response.setHeader("Connection", "close");
 		client->appendWriteBuffer(response.serialize());
+		updatePollEvents(client_fd, POLLOUT);
+		return;
+	}
+
+	if (client->hasBadRequest())
+	{
+		HttpResponse response = RequestHandler::makeErrorResponse(400, server->getConfig());
+
+		response.setHeader("Connection", "close");
+		client->appendWriteBuffer(response.serialize());
+		updatePollEvents(client_fd, POLLOUT);
+		return;
+	}
+
+	if (request_complete)
+	{
+		std::string	clientIp = inet_ntoa(client->getAddr().sin_addr);
+
+		RequestHandler::HandlerResult result =
+			RequestHandler::handle(client->getRequest(), server->getConfig(), clientIp);
+
+		if (result.cgi)
+		{
+			result.cgi->setClientFd(client_fd);
+			registerCgiSession(result.cgi);
+			return ;
+		}
+
+		result.response.setHeader("Connection", "close");
+		client->appendWriteBuffer(result.response.serialize());
 		updatePollEvents(client_fd, POLLIN | POLLOUT);
 	}
 }
@@ -190,15 +275,8 @@ void	Engine::handleClientRemove(int client_fd)
 	{
 		target->second->removeClient(client_fd);
 		this->client_to_server.erase(client_fd);
-
-		for (std::vector<struct pollfd>::iterator it = this->pollfds.begin(); it != this->pollfds.end(); ++it)
-		{
-			if (it->fd == client_fd)
-			{
-				this->pollfds.erase(it);
-				break ;
-			}
-		}
+		invalidateCgiClient(client_fd);
+		removePollFd(client_fd);
 	}
 }
 
@@ -211,5 +289,136 @@ void	Engine::updatePollEvents(int fd, short events)
 			this->pollfds[i].events = events;
 			break ;
 		}
+	}
+}
+
+void	Engine::removePollFd(int fd)
+{
+	for (std::size_t i = 0; i < this->pollfds.size(); ++i)
+	{
+		if (this->pollfds[i].fd == fd)
+		{
+			this->pollfds[i].fd = -1;
+			break ;
+		}
+	}
+}
+
+void	Engine::registerCgiSession(CgiProcess *cgi)
+{
+	if (cgi->isInputOpen())
+	{
+		struct pollfd	stdin_pollfd;
+
+		stdin_pollfd.fd = cgi->getStdinFd();
+		stdin_pollfd.events = POLLOUT;
+		stdin_pollfd.revents = 0;
+		this->pollfds.push_back(stdin_pollfd);
+		this->cgi_fds[cgi->getStdinFd()] = cgi;
+	}
+
+	if (cgi->isOutputOpen())
+	{
+		struct pollfd	stdout_pollfd;
+
+		stdout_pollfd.fd = cgi->getStdoutFd();
+		stdout_pollfd.events = POLLIN;
+		stdout_pollfd.revents = 0;
+		this->pollfds.push_back(stdout_pollfd);
+		this->cgi_fds[cgi->getStdoutFd()] = cgi;
+	}
+	else
+		this->cgi_pending_reap.push_back(cgi);
+}
+
+void	Engine::handleCgiWritable(int fd)
+{
+	std::map<int, CgiProcess *>::iterator	it = this->cgi_fds.find(fd);
+
+	if (it == this->cgi_fds.end())
+		return ;
+
+	CgiProcess	*cgi = it->second;
+
+	cgi->handleWritable();
+	if (!cgi->isInputOpen())
+		removeCgiFd(fd);
+}
+
+void	Engine::handleCgiReadable(int fd)
+{
+	std::map<int, CgiProcess *>::iterator	it = this->cgi_fds.find(fd);
+
+	if (it == this->cgi_fds.end())
+		return ;
+
+	CgiProcess	*cgi = it->second;
+
+	cgi->handleReadable();
+	if (!cgi->isOutputOpen())
+	{
+		removeCgiFd(fd);
+		this->cgi_pending_reap.push_back(cgi);
+	}
+}
+
+void	Engine::removeCgiFd(int fd)
+{
+	this->cgi_fds.erase(fd);
+	removePollFd(fd);
+}
+
+void	Engine::finalizeCgiSession(CgiProcess *cgi)
+{
+	std::map<int, Server *>::iterator	target = this->client_to_server.find(cgi->getClientFd());
+
+	if (target != this->client_to_server.end())
+	{
+		Server	*server = target->second;
+		Client	*client = server ? server->getClient(cgi->getClientFd()) : NULL;
+
+		if (client)
+		{
+			HttpResponse	response = RequestHandler::finishCgi(cgi, server->getConfig());
+
+			response.setHeader("Connection", "close");
+			client->appendWriteBuffer(response.serialize());
+			updatePollEvents(cgi->getClientFd(), POLLIN | POLLOUT);
+		}
+	}
+
+	delete cgi;
+}
+
+void	Engine::reapCgiSessions()
+{
+	std::size_t	i = 0;
+
+	while (i < this->cgi_pending_reap.size())
+	{
+		CgiProcess	*cgi = this->cgi_pending_reap[i];
+
+		if (cgi->tryReap())
+		{
+			finalizeCgiSession(cgi);
+			this->cgi_pending_reap.erase(this->cgi_pending_reap.begin() + i);
+		}
+		else
+			++i;
+	}
+}
+
+void	Engine::invalidateCgiClient(int client_fd)
+{
+	for (std::map<int, CgiProcess *>::iterator it = this->cgi_fds.begin(); it != this->cgi_fds.end(); ++it)
+	{
+		if (it->second->getClientFd() == client_fd)
+			it->second->setClientFd(-1);
+	}
+
+	for (std::size_t i = 0; i < this->cgi_pending_reap.size(); ++i)
+	{
+		if (this->cgi_pending_reap[i]->getClientFd() == client_fd)
+			this->cgi_pending_reap[i]->setClientFd(-1);
 	}
 }

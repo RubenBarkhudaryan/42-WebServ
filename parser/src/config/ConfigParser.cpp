@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <limits>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 
@@ -327,6 +328,19 @@ std::vector<ServerConfig> ConfigParser::parse()
 
 	if (servers.empty())
 		fail("configuration contains no server blocks");
+
+	std::set<std::string> listenAddresses;
+
+	for (std::size_t i = 0; i < servers.size(); ++i)
+	{
+		std::string host = servers[i].getHost();
+		std::ostringstream key;
+
+		key << (host.empty() ? "0.0.0.0" : host) << ":" << servers[i].getPort();
+
+		if (!listenAddresses.insert(key.str()).second)
+			fail("duplicate 'listen " + key.str() + "' across server blocks");
+	}
 
 	return servers;
 }

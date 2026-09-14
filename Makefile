@@ -13,6 +13,7 @@ SRCS		=	./sockets/engine/engine.cpp\
 				./parser/src/http/HttpRequest.cpp\
 				./parser/src/http/HttpResponse.cpp\
 				./parser/src/http/RequestHandler.cpp\
+				./parser/src/http/CgiProcess.cpp\
 				./parser/src/model/Location.cpp\
 				./main.cpp
 

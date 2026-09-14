@@ -37,8 +37,6 @@ private:
 public:
 	HttpRequest();
 
-	void parse(const std::string &rawRequest);
-
 	const std::string &getMethod() const;
 	const std::string &getTarget() const;
 	const std::string &getVersion() const;

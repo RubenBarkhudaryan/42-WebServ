@@ -278,6 +278,20 @@ void ConfigParser::parseLocationDirective(
 
 		expect(";");
 	}
+	else if (directive == "upload_store")
+	{
+		ensureUnique(directives, directive);
+		++_pos;
+
+		std::string uploadStore = consumeValue(directive);
+
+		if (uploadStore.empty())
+			fail("upload_store cannot be empty");
+
+		location.setUploadStore(uploadStore);
+
+		expect(";");
+	}
 	else
 	{
 		fail(

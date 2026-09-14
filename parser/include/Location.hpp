@@ -15,6 +15,7 @@ private:
 	std::string redirection;
 	std::string cgiExtension;
 	std::string cgiPath;
+	std::string uploadStore;
 
 public:
 	// Конструкторы и деструкторы
@@ -33,6 +34,7 @@ public:
 	void setAutoIndex(const std::string &a);
 	void setCgiExtension(const std::string &extension);
 	void setCgiPath(const std::string &path);
+	void setUploadStore(const std::string &path);
 
 	// Геттеры (использует РОЛЬ 3, когда генерирует ответ)
 	std::string getPath() const;
@@ -45,4 +47,5 @@ public:
 	int getRedirectionCode() const;
 	const std::string &getCgiExtension() const;
 	const std::string &getCgiPath() const;
+	const std::string &getUploadStore() const;
 };

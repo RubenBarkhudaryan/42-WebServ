@@ -91,14 +91,23 @@ void	Server::setup()
 	this->fd = server_sock;
 
 	int	opt = 1;
-	setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
+	{
+		close(server_sock);
+		throw std::runtime_error("[Server]: setsockopt failed.");
+	}
 
 	this->addr.sin_family = AF_INET;
 	this->addr.sin_port = htons(this->port);
 
 	if (!ipAddr.empty())
-		inet_pton(AF_INET, this->ipAddr.c_str(), (struct sockaddr*)&this->addr.sin_addr);
-
+	{
+		if (inet_pton(AF_INET, this->ipAddr.c_str(), (struct sockaddr*)&this->addr.sin_addr) != 1)
+		{
+			close(server_sock);
+			throw std::runtime_error("[Server]: invalid listen host '" + this->ipAddr + "'.");
+		}
+	}
 	else
 		this->addr.sin_addr.s_addr = INADDR_ANY;
 
