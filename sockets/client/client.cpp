@@ -22,7 +22,8 @@ Client::Client(int fd, struct sockaddr_in addr) :
 	framing(FRAMING_NONE),
 	content_length(0),
 	body_start(0),
-	last_activity(time(NULL))
+	last_activity(time(NULL)),
+	dispatched(false)
 {
 }
 
@@ -79,6 +80,17 @@ void	Client::appendWriteBuffer(const std::string& data)
 {
 	this->write_buff += data;
 	this->write_stat = !this->write_buff.empty();
+	this->dispatched = true;
+}
+
+bool	Client::isHeadersParsed() const
+{
+	return (this->headers_parsed);
+}
+
+bool	Client::isDispatched() const
+{
+	return (this->dispatched);
 }
 
 void	Client::consumeWriteBuffer(std::size_t size)

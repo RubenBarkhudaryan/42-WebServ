@@ -30,6 +30,7 @@ class	Client
 		std::string::size_type		body_start;
 
 		time_t						last_activity;
+		bool						dispatched;
 
 		Client(const Client& other);
 		Client& operator=(const Client& other);
@@ -65,6 +66,18 @@ class	Client
 		bool				isBodyComplete(std::size_t maxBodySize);
 
 		time_t				getLastActivity() const;
+
+		/*
+		** Idle-timeout eligibility: a connection that has started receiving
+		** a request but not yet been dispatched to RequestHandler (e.g. a
+		** large body still uploading) must never be timed out just because
+		** the server hasn't gotten around to reading it under heavy
+		** concurrent load - that's server-side scheduling delay, not client
+		** idleness. Only "no valid request started yet" and "response
+		** already sent, client lingering" are genuinely idle.
+		*/
+		bool				isHeadersParsed() const;
+		bool				isDispatched() const;
 };
 
 #endif //CLIENT_HPP

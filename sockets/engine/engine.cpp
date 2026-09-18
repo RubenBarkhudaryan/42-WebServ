@@ -323,7 +323,15 @@ void	Engine::sweepIdleClients()
 		if (!client || busyWithCgi.find(client_fd) != busyWithCgi.end())
 			continue;
 
-		if (now - client->getLastActivity() >= IDLE_TIMEOUT_SECONDS)
+		// A connection that has a request in flight but hasn't been
+		// dispatched yet (e.g. still uploading a large body) must not be
+		// timed out just because this server hasn't gotten around to
+		// reading it under heavy concurrent load - only a connection with
+		// no valid request started, or one already dispatched and now
+		// lingering, is genuinely idle.
+		bool eligible = !client->isHeadersParsed() || client->isDispatched();
+
+		if (eligible && now - client->getLastActivity() >= IDLE_TIMEOUT_SECONDS)
 			toRemove.push_back(client_fd);
 	}
 
