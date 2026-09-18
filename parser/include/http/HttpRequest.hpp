@@ -25,6 +25,20 @@ enum ChunkedState
 	CHUNKED_MALFORMED
 };
 
+/*
+** HEADERS_INCOMPLETE: the header/body delimiter hasn't arrived yet, so more
+** data may still make this a valid request - keep waiting.
+** HEADERS_MALFORMED: the delimiter arrived, so the whole header block was
+** available to parse, and it's invalid (bad request line, header with no
+** colon, ...) - no amount of extra data fixes this, treat it as a 400 now.
+*/
+enum HeaderParseStatus
+{
+	HEADERS_INCOMPLETE,
+	HEADERS_MALFORMED,
+	HEADERS_OK
+};
+
 class HttpRequest
 {
 private:
@@ -47,7 +61,7 @@ public:
 	static ChunkedState getChunkedState(const std::string &buffer, std::string::size_type bodyStart);
 	static bool decodeChunkedBody(const std::string &rawChunked, std::string &decodedBody);
 	bool hasHeader(const std::string &name) const;
-	bool parseHeaders(const std::string &rawRequest, std::string::size_type &bodyStart);
+	HeaderParseStatus parseHeaders(const std::string &rawRequest, std::string::size_type &bodyStart);
 	bool parseBody(const std::string &rawRequest, std::string::size_type bodyStart);
 	BodyFraming getBodyFraming() const;
 	const std::string &getHeader(const std::string &name) const;

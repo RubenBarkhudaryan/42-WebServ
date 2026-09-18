@@ -40,6 +40,8 @@ class	Engine
 		void	updatePollEvents(int fd, short events);
 		void	removePollFd(int fd);
 
+		void	sweepIdleClients();
+
 	public:
 		Engine();
 		~Engine();

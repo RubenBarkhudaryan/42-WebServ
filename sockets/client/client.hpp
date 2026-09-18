@@ -7,6 +7,7 @@
 # include <netinet/in.h>
 # include <string>
 # include <sys/types.h>
+# include <ctime>
 
 class	Client
 {
@@ -27,6 +28,8 @@ class	Client
 
 		ssize_t						content_length;
 		std::string::size_type		body_start;
+
+		time_t						last_activity;
 
 		Client(const Client& other);
 		Client& operator=(const Client& other);
@@ -51,7 +54,17 @@ class	Client
 
 		bool				hasBadRequest() const;
 		bool				hasBodyTooLarge() const;
-		bool				isRequestComplete(std::size_t maxBodySize = static_cast<std::size_t>(-1));
+
+		/*
+		** Two-phase completion check: headers must be parsed (and their
+		** target known) before the caller can look up the per-location
+		** client_max_body_size to enforce, so parsing and the body-size/
+		** completion check are separate calls instead of one.
+		*/
+		bool				parseHeadersIfNeeded();
+		bool				isBodyComplete(std::size_t maxBodySize);
+
+		time_t				getLastActivity() const;
 };
 
 #endif //CLIENT_HPP

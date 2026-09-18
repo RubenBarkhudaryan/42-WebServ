@@ -8,6 +8,7 @@
 namespace
 {
 	const std::string::size_type	MAX_HEADER_SIZE = 8192;
+	const std::size_t				CHUNK_OVERHEAD_ALLOWANCE = 4096;
 }
 
 Client::Client(int fd, struct sockaddr_in addr) :
@@ -20,7 +21,8 @@ Client::Client(int fd, struct sockaddr_in addr) :
 	request(),
 	framing(FRAMING_NONE),
 	content_length(0),
-	body_start(0)
+	body_start(0),
+	last_activity(time(NULL))
 {
 }
 
@@ -65,6 +67,12 @@ void	Client::appendReadBuffer(const char *data, ssize_t len)
 		return ;
 
 	this->read_buff.append(data, len);
+	this->last_activity = time(NULL);
+}
+
+time_t	Client::getLastActivity() const
+{
+	return (this->last_activity);
 }
 
 void	Client::appendWriteBuffer(const std::string& data)
@@ -94,44 +102,62 @@ bool	Client::hasBodyTooLarge() const
 	return (this->body_too_large);
 }
 
-bool	Client::isRequestComplete(std::size_t maxBodySize)
+bool	Client::parseHeadersIfNeeded()
 {
 	if (this->bad_request || this->body_too_large)
 		return (false);
+	if (this->headers_parsed)
+		return (true);
 
-	if (!this->headers_parsed)
+	HeaderParseStatus status = this->request.parseHeaders(this->read_buff, this->body_start);
+
+	if (status == HEADERS_MALFORMED)
 	{
-		if (!this->request.parseHeaders(this->read_buff, this->body_start))
-		{
-			if (this->read_buff.size() > MAX_HEADER_SIZE)
-				this->bad_request = true;
-			return (false);
-		}
-
-		this->headers_parsed = true;
-		this->framing = this->request.getBodyFraming();
-
-		if (this->framing == FRAMING_INVALID)
-		{
+		this->bad_request = true;
+		return (false);
+	}
+	if (status == HEADERS_INCOMPLETE)
+	{
+		if (this->read_buff.size() > MAX_HEADER_SIZE)
 			this->bad_request = true;
-			return (false);
-		}
-
-		if (this->framing == FRAMING_CONTENT_LENGTH)
-		{
-			this->content_length = this->request.getContentLength();
-
-			if (this->content_length >= 0 &&
-				static_cast<std::size_t>(this->content_length) > maxBodySize)
-			{
-				this->body_too_large = true;
-				return (false);
-			}
-		}
+		return (false);
 	}
 
+	this->headers_parsed = true;
+	this->framing = this->request.getBodyFraming();
+
+	if (this->framing == FRAMING_INVALID)
+	{
+		this->bad_request = true;
+		return (false);
+	}
+
+	if (this->framing == FRAMING_CONTENT_LENGTH)
+		this->content_length = this->request.getContentLength();
+
+	return (true);
+}
+
+bool	Client::isBodyComplete(std::size_t maxBodySize)
+{
+	if (this->bad_request || this->body_too_large || !this->headers_parsed)
+		return (false);
+
+	if (this->framing == FRAMING_CONTENT_LENGTH &&
+		this->content_length >= 0 &&
+		static_cast<std::size_t>(this->content_length) > maxBodySize)
+	{
+		this->body_too_large = true;
+		return (false);
+	}
+
+	// Chunked framing adds size-line/CRLF overhead on the wire, so the raw
+	// buffered size can exceed maxBodySize slightly even when the actual
+	// decoded body is within the limit. This is only a buffering safety
+	// net against unbounded uploads; the precise check runs against the
+	// decoded body size once the request reaches RequestHandler.
 	if (this->framing == FRAMING_CHUNKED &&
-		this->read_buff.size() - this->body_start > maxBodySize)
+		this->read_buff.size() - this->body_start > maxBodySize + CHUNK_OVERHEAD_ALLOWANCE)
 	{
 		this->body_too_large = true;
 		return (false);

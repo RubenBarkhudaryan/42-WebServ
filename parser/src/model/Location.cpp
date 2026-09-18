@@ -9,7 +9,9 @@ Location::Location()
 	  redirection(""),
 	  cgiExtension(""),
 	  cgiPath(""),
-	  uploadStore("")
+	  uploadStore(""),
+	  hasClientMaxBodySize(false),
+	  clientMaxBodySize(0)
 {
 	indexes.push_back("index.html");
 }
@@ -17,7 +19,8 @@ Location::~Location() {}
 
 Location::Location(const Location &other)
 	: path(other.path), methods(other.methods), root(other.root),
-	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection), cgiExtension(other.cgiExtension), cgiPath(other.cgiPath), uploadStore(other.uploadStore) {}
+	  indexes(other.indexes), autoindex(other.autoindex), redirectionCode(other.redirectionCode), redirection(other.redirection), cgiExtension(other.cgiExtension), cgiPath(other.cgiPath), uploadStore(other.uploadStore),
+	  hasClientMaxBodySize(other.hasClientMaxBodySize), clientMaxBodySize(other.clientMaxBodySize) {}
 
 Location &Location::operator=(const Location &other)
 {
@@ -33,6 +36,8 @@ Location &Location::operator=(const Location &other)
 		cgiExtension = other.cgiExtension;
 		cgiPath = other.cgiPath;
 		uploadStore = other.uploadStore;
+		hasClientMaxBodySize = other.hasClientMaxBodySize;
+		clientMaxBodySize = other.clientMaxBodySize;
 	}
 	return *this;
 }
@@ -133,6 +138,22 @@ void Location::setCgiPath(const std::string &path)
 void Location::setUploadStore(const std::string &path)
 {
 	uploadStore = path;
+}
+
+void Location::setClientMaxBodySize(size_t size)
+{
+	hasClientMaxBodySize = true;
+	clientMaxBodySize = size;
+}
+
+bool Location::hasOwnClientMaxBodySize() const
+{
+	return hasClientMaxBodySize;
+}
+
+size_t Location::getClientMaxBodySize() const
+{
+	return clientMaxBodySize;
 }
 
 const std::string &Location::getCgiExtension() const

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "./HttpRequest.hpp"
 #include "./HttpResponse.hpp"
 #include "./CgiProcess.hpp"
@@ -27,6 +29,14 @@ public:
 		const ServerConfig &config, const std::string &clientIp);
 	static HttpResponse finishCgi(CgiProcess *cgi, const ServerConfig &config);
 	static HttpResponse makeErrorResponse(int code, const ServerConfig &config);
+
+	/*
+	** Effective client_max_body_size for a given request target: the
+	** matching location's own limit if it set one, otherwise the server's.
+	** Used by Engine before the body has fully arrived, so it can reject
+	** an oversized upload early instead of buffering all of it.
+	*/
+	static std::size_t resolveMaxBodySize(const std::string &target, const ServerConfig &config);
 
 private:
 	static const Location *matchLocation(const std::vector<Location> &locations, const std::string &target);

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 
+#include <ctime>
 #include <map>
 #include <set>
 #include <vector>
@@ -24,6 +25,8 @@ namespace
 	{
 		return entry.fd == -1;
 	}
+
+	const time_t IDLE_TIMEOUT_SECONDS = 15;
 }
 
 Engine::Engine()
@@ -49,7 +52,7 @@ void	Engine::run()
 {
 	while (true)
 	{
-		int	timeout = this->cgi_pending_reap.empty() ? -1 : 25;
+		int	timeout = this->cgi_pending_reap.empty() ? 1000 : 25;
 		int	ready = poll(this->pollfds.data(), this->pollfds.size(), timeout);
 
 		if (ready == -1)
@@ -97,6 +100,7 @@ void	Engine::run()
 			this->pollfds.end());
 
 		reapCgiSessions();
+		sweepIdleClients();
 	}
 }
 
@@ -189,7 +193,25 @@ void	Engine::handleClientRead(int client_fd)
 
 	client->appendReadBuffer(buffer, bytes_read);
 
-	bool request_complete = client->isRequestComplete(server->getConfig().getClientMaxBodySize());
+	bool headers_ready = client->parseHeadersIfNeeded();
+
+	if (client->hasBadRequest())
+	{
+		HttpResponse response = RequestHandler::makeErrorResponse(400, server->getConfig());
+
+		response.setHeader("Connection", "close");
+		client->appendWriteBuffer(response.serialize());
+		updatePollEvents(client_fd, POLLOUT);
+		return;
+	}
+
+	if (!headers_ready)
+		return;
+
+	std::size_t maxBodySize = RequestHandler::resolveMaxBodySize(
+		client->getRequest().getTarget(), server->getConfig());
+	bool request_complete = client->isBodyComplete(maxBodySize);
+
 	if (client->hasBodyTooLarge())
 	{
 		HttpResponse response = RequestHandler::makeErrorResponse(413, server->getConfig());
@@ -278,6 +300,35 @@ void	Engine::handleClientRemove(int client_fd)
 		invalidateCgiClient(client_fd);
 		removePollFd(client_fd);
 	}
+}
+
+void	Engine::sweepIdleClients()
+{
+	std::set<int>	busyWithCgi;
+
+	for (std::map<int, CgiProcess *>::iterator it = this->cgi_fds.begin(); it != this->cgi_fds.end(); ++it)
+		busyWithCgi.insert(it->second->getClientFd());
+	for (std::size_t i = 0; i < this->cgi_pending_reap.size(); ++i)
+		busyWithCgi.insert(this->cgi_pending_reap[i]->getClientFd());
+
+	std::vector<int>	toRemove;
+	time_t				now = time(NULL);
+
+	for (std::map<int, Server *>::iterator it = this->client_to_server.begin(); it != this->client_to_server.end(); ++it)
+	{
+		int		client_fd = it->first;
+		Server	*server = it->second;
+		Client	*client = server ? server->getClient(client_fd) : NULL;
+
+		if (!client || busyWithCgi.find(client_fd) != busyWithCgi.end())
+			continue;
+
+		if (now - client->getLastActivity() >= IDLE_TIMEOUT_SECONDS)
+			toRemove.push_back(client_fd);
+	}
+
+	for (std::size_t i = 0; i < toRemove.size(); ++i)
+		handleClientRemove(toRemove[i]);
 }
 
 void	Engine::updatePollEvents(int fd, short events)

@@ -1,3 +1,11 @@
 *.o
 webserv
 tests/reports/
+tests
+cgi_test
+upload
+tester
+YoupiBanane
+configs
+config.conf
+*.txt

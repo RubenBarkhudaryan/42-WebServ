@@ -16,6 +16,8 @@ private:
 	std::string cgiExtension;
 	std::string cgiPath;
 	std::string uploadStore;
+	bool hasClientMaxBodySize;
+	size_t clientMaxBodySize;
 
 public:
 	// Конструкторы и деструкторы
@@ -35,6 +37,7 @@ public:
 	void setCgiExtension(const std::string &extension);
 	void setCgiPath(const std::string &path);
 	void setUploadStore(const std::string &path);
+	void setClientMaxBodySize(size_t size);
 
 	// Геттеры (использует РОЛЬ 3, когда генерирует ответ)
 	std::string getPath() const;
@@ -48,4 +51,6 @@ public:
 	const std::string &getCgiExtension() const;
 	const std::string &getCgiPath() const;
 	const std::string &getUploadStore() const;
+	bool hasOwnClientMaxBodySize() const;
+	size_t getClientMaxBodySize() const;
 };

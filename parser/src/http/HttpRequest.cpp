@@ -99,7 +99,7 @@ const std::string &HttpRequest::getHeader(const std::string &name) const
 	return emptyString;
 }
 
-bool HttpRequest::parseHeaders(
+HeaderParseStatus HttpRequest::parseHeaders(
 	const std::string &rawRequest,
 	std::string::size_type &bodyStart)
 {
@@ -119,7 +119,10 @@ bool HttpRequest::parseHeaders(
 		delimiterLength = 2;
 	}
 	if (headerEnd == std::string::npos)
-		return false;
+		return HEADERS_INCOMPLETE;
+
+	// The full header block is present past this point, so any parse
+	// failure below is a definitive malformed request, not "need more data".
 
 	std::string headersPart = rawRequest.substr(0, headerEnd);
 
@@ -127,7 +130,7 @@ bool HttpRequest::parseHeaders(
 	std::string line;
 
 	if (!std::getline(headerStream, line))
-		return false;
+		return HEADERS_MALFORMED;
 
 	if (!line.empty() && line[line.size() - 1] == '\r')
 		line.erase(line.size() - 1);
@@ -135,7 +138,7 @@ bool HttpRequest::parseHeaders(
 	std::istringstream requestLine(line);
 
 	if (!(requestLine >> _method >> _target >> _version))
-		return false;
+		return HEADERS_MALFORMED;
 
 	while (std::getline(headerStream, line))
 	{
@@ -145,20 +148,20 @@ bool HttpRequest::parseHeaders(
 		std::size_t colonPos = line.find(':');
 
 		if (colonPos == std::string::npos)
-			return false;
+			return HEADERS_MALFORMED;
 
 		std::string name = trim(line.substr(0, colonPos));
 		std::string value = trim(line.substr(colonPos + 1));
 
 		if (name.empty())
-			return false;
+			return HEADERS_MALFORMED;
 
 		_headers.insert(std::make_pair(name, value));
 	}
 
 	bodyStart = headerEnd + delimiterLength;
 
-	return true;
+	return HEADERS_OK;
 }
 
 BodyFraming HttpRequest::getBodyFraming() const

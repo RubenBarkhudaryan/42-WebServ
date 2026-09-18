@@ -332,7 +332,9 @@ CgiProcess *RequestHandler::startCgi(const HttpRequest &request,
 		setenv("SERVER_SOFTWARE", "webserv/1.0", 1);
 		setenv("SERVER_NAME", config.getHost().c_str(), 1);
 		setenv("SERVER_PORT", portStream.str().c_str(), 1);
-		setenv("PATH_INFO", "", 1);
+		setenv("REQUEST_URI", path.c_str(), 1);
+		setenv("PATH_INFO", path.c_str(), 1);
+
 		setenv("REDIRECT_STATUS", "200", 1);
 		if (!clientIp.empty())
 			setenv("REMOTE_ADDR", clientIp.c_str(), 1);
@@ -469,11 +471,10 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request,
 			response.setBody(body.str());
 			return response;
 		}
+		if (pathIsDirectory(selectedPath))
+			return makeErrorResponse(404, config);
 	}
-	if (!pathExists(selectedPath))
-		return makeErrorResponse(404, config);
-	if (pathIsDirectory(selectedPath) || !pathIsReadable(selectedPath))
-		return makeErrorResponse(403, config);
+
 	if (hasExtension(selectedPath, location.getCgiExtension()))
 	{
 		HttpResponse errorResponse;
@@ -484,6 +485,11 @@ HttpResponse RequestHandler::handleGet(const HttpRequest &request,
 		cgiOut = cgi;
 		return HttpResponse();
 	}
+
+	if (!pathExists(selectedPath))
+		return makeErrorResponse(404, config);
+	if (pathIsDirectory(selectedPath) || !pathIsReadable(selectedPath))
+		return makeErrorResponse(403, config);
 	std::string content;
 	if (!readFile(selectedPath, content))
 		return makeErrorResponse(500, config);
@@ -501,8 +507,6 @@ HttpResponse RequestHandler::handlePost(const HttpRequest &request,
 {
 	if (hasExtension(filePath, location.getCgiExtension()))
 	{
-		if (!pathExists(filePath))
-			return makeErrorResponse(404, config);
 		HttpResponse errorResponse;
 		CgiProcess *cgi = startCgi(request, config, location, path,
 			filePath, clientIp, errorResponse);
@@ -557,6 +561,17 @@ HttpResponse RequestHandler::handleDelete(const ServerConfig &config,
 	return response;
 }
 
+std::size_t RequestHandler::resolveMaxBodySize(const std::string &target,
+	const ServerConfig &config)
+{
+	std::string path = stripQuery(target);
+	const Location *location = matchLocation(config.getLocations(), path);
+
+	if (location && location->hasOwnClientMaxBodySize())
+		return location->getClientMaxBodySize();
+	return config.getClientMaxBodySize();
+}
+
 RequestHandler::HandlerResult RequestHandler::handle(const HttpRequest &request,
 	const ServerConfig &config, const std::string &clientIp)
 {
@@ -607,7 +622,10 @@ RequestHandler::HandlerResult RequestHandler::handle(const HttpRequest &request,
 		result.response = makeErrorResponse(501, config);
 		return result;
 	}
-	if (request.getBody().size() > config.getClientMaxBodySize())
+	std::size_t maxBodySize = location->hasOwnClientMaxBodySize()
+		? location->getClientMaxBodySize() : config.getClientMaxBodySize();
+
+	if (request.getBody().size() > maxBodySize)
 	{
 		result.response = makeErrorResponse(413, config);
 		return result;

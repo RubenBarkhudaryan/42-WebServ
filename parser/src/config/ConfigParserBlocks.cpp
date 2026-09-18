@@ -278,6 +278,17 @@ void ConfigParser::parseLocationDirective(
 
 		expect(";");
 	}
+	else if (directive == "client_max_body_size")
+	{
+		ensureUnique(directives, directive);
+		++_pos;
+
+		std::string value = consumeValue(directive);
+
+		expect(";");
+
+		location.setClientMaxBodySize(parseBodySize(value));
+	}
 	else if (directive == "upload_store")
 	{
 		ensureUnique(directives, directive);
